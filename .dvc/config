@@ -1,0 +1,5 @@
+[core]
+    remote = gcs-remote
+['remote "gcs-remote"']
+    url = gs://documind-amr-data/dvc
+    credentialpath = ../credentials/gcp-key.json
