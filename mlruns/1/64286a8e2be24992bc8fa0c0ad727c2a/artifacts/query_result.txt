@@ -1,0 +1,54 @@
+QUESTION:
+what is this document about?
+
+PARAMETERS:
+  k             : 4
+  chunk_size    : 450
+  chunk_overlap : 45
+  embedding     : all-MiniLM-L6-v2
+
+METRICS:
+  retrieval_latency : 5.5337s
+  chunks_retrieved  : 4
+
+SOURCES:
+data/raw/DataStructure.pdf
+
+RETRIEVED CONTEXT:
+[Source: data/raw/DataStructure.pdf | Page: 18]
+xviii Preface
+is far too brief to be used in such a course. You might ﬁnd it useful to use an additional
+work on NP-completeness to augment this text.
+Exercises
+Exercises, provided at the end of each chapter, match the order in which material is pre-
+sented. The last exercises may address the chapter as a whole rather than a speciﬁc section.
+Difﬁcult exercises are marked with an asterisk, and more challenging exercises have two
+asterisks.
+
+[Source: data/raw/DataStructure.pdf | Page: 18]
+asterisks.
+References
+References are placed at the end of each chapter. Generally the references either are his-
+torical, representing the original source of the material, or they represent extensions and
+improvements to the results given in the text. Some references represent solutions to
+exercises.
+Supplements
+The following supplements are available to all readers at http://cssupport.pearsoncmg.com/
+r Source code for example programs
+r Errata
+
+[Source: data/raw/DataStructure.pdf | Page: 206]
+constants) in alphabetical order. Each identiﬁer should be output with a list of line
+numbers on which it occurs.
+4.51 Generate an index for a book. The input ﬁle consists of a set of index entries. Each
+line consists of the string
+IX:, followed by an index entry name enclosed in braces,
+followed by a page number that is enclosed in braces. Each ! in an index entry
+
+[Source: data/raw/DataStructure.pdf | Page: 111]
+Figure 3.13 shows theNode class, consisting of the stored item, pointers to the previous
+and next Node, and a constructor. All the data members are public.
+Figure 3.14 shows theconst_iterator class, and Figure 3.15 shows theiterator class.
+As we mentioned earlier, the syntax at line 39 in Figure 3.15 indicates an advanced feature
+known as inheritance and means that
+iterator IS-A const_iterator. When the iterator
