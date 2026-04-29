@@ -42,6 +42,8 @@ jobs:
           EMBEDDING_MODEL: all-MiniLM-L6-v2
           MLFLOW_TRACKING_URI: sqlite:///mlflow_test.db
           GOOGLE_APPLICATION_CREDENTIALS: ""
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
 
   # ── Job 2: Build and push Docker image ───────────────────────────────
   build-and-push:

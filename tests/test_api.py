@@ -2,6 +2,8 @@ import pytest
 import io
 from fastapi.testclient import TestClient
 from app.main import app
+from unittest.mock import patch
+
 
 client = TestClient(app)
 
@@ -38,15 +40,26 @@ def test_ingest_unsupported_file():
 
 def test_query_endpoint():
     """Query endpoint returns 200 with correct structure"""
-    response = client.post(
-        "/api/v1/query",
-        json={"question": "What is artificial intelligence?", "k": 2}
-    )
+    with patch("app.core.rag.generate_answer", return_value="Mocked answer"):
+        response = client.post(
+            "/api/v1/query",
+            json={"question": "What is artificial intelligence?", "k": 2}
+        )
     assert response.status_code == 200
     data = response.json()
     assert "answer" in data
     assert "sources" in data
     assert "chunks_used" in data
+
+
+def test_query_default_k():
+    """Query works without specifying k — uses default"""
+    with patch("app.core.rag.generate_answer", return_value="Mocked answer"):
+        response = client.post(
+            "/api/v1/query",
+            json={"question": "What is AI?"}
+        )
+    assert response.status_code == 200
 
 
 def test_query_empty_question():
@@ -56,12 +69,3 @@ def test_query_empty_question():
         json={"question": "", "k": 4}
     )
     assert response.status_code == 400
-
-
-def test_query_default_k():
-    """Query works without specifying k — uses default"""
-    response = client.post(
-        "/api/v1/query",
-        json={"question": "What is AI?"}
-    )
-    assert response.status_code == 200

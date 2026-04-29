@@ -1,6 +1,7 @@
+from app.core.rag import load_document, chunk_documents, ingest_document, query_documents
+from unittest.mock import patch, MagicMock
 import pytest
 import os
-from app.core.rag import load_document, chunk_documents, ingest_document, query_documents
 
 
 @pytest.fixture
@@ -63,7 +64,8 @@ def test_ingest_document(sample_txt_file):
 def test_query_returns_correct_structure(sample_txt_file):
     """Query response has correct keys and types"""
     ingest_document(sample_txt_file)
-    result = query_documents("What is machine learning?", k=2)
+    with patch("app.core.rag.generate_answer", return_value="Mocked answer"):
+        result = query_documents("What is machine learning?", k=2)
     assert "answer" in result
     assert "sources" in result
     assert "chunks_used" in result
@@ -73,6 +75,6 @@ def test_query_returns_correct_structure(sample_txt_file):
 
 def test_query_empty_db():
     """Query on empty collection returns no results gracefully"""
-    result = query_documents("random question", k=4)
-    # Should not crash — returns either answer or no results message
+    with patch("app.core.rag.generate_answer", return_value="Mocked answer"):
+        result = query_documents("random question", k=4)
     assert "answer" in result
