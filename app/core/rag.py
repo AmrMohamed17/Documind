@@ -8,7 +8,14 @@ import time
 import os
 
 load_dotenv()
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:///home/ubuntu/CS/projects/documind/mlruns"))
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
+experiment = mlflow.get_experiment_by_name("documind-rag-queries")
+if experiment is None:
+    mlflow.create_experiment(
+        "documind-rag-queries",
+        artifact_location=os.getenv("MLFLOW_ARTIFACT_ROOT")
+    )
+mlflow.set_experiment("documind-rag-queries")
 
 
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 500))
@@ -56,9 +63,10 @@ def query_documents(question: str, k: int = 4) -> dict:
     Query pipeline wrapped with MLflow tracking.
     Every call logs parameters, metrics, and artifacts as a new run.
     """
-    mlflow.set_experiment("documind-rag-queries")
+    artifact_root = os.getenv("MLFLOW_ARTIFACT_ROOT")
 
-    with mlflow.start_run():
+
+    with mlflow.start_run() as run:
 
         mlflow.log_params({
             "question": question,
