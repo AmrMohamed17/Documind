@@ -3,6 +3,7 @@ from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from app.core.embeddings import add_documents, similarity_search
+import google.generativeai as genai
 import mlflow
 import time
 import os
@@ -17,6 +18,8 @@ if experiment is None:
     )
 mlflow.set_experiment("documind-rag-queries")
 
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+gemini_model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
 
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 500))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 50))
@@ -58,14 +61,36 @@ def ingest_document(file_path: str) -> dict:
     }
 
 
+def generate_answer(question: str, context: str) -> str:
+    """
+    Takes the retrieved context chunks and the user's question,
+    sends them to Gemini with a structured prompt,
+    returns a grounded, concise answer.
+
+    This is the 'G' in RAG — Retrieval Augmented Generation.
+    The prompt is designed to prevent hallucination by instructing
+    the model to only use the provided context.
+    """
+    prompt = f"""You are a helpful assistant that answers questions based strictly on the provided context.
+If the answer cannot be found in the context, say "I cannot find the answer in the provided documents."
+Do not make up information or use knowledge outside the provided context.
+
+Context:
+{context}
+
+Question: {question}
+
+Answer:"""
+
+    response = gemini_model.generate_content(prompt)
+    return response.text
+
+
 def query_documents(question: str, k: int = 4) -> dict:
     """
     Query pipeline wrapped with MLflow tracking.
     Every call logs parameters, metrics, and artifacts as a new run.
     """
-    artifact_root = os.getenv("MLFLOW_ARTIFACT_ROOT")
-
-
     with mlflow.start_run() as run:
 
         mlflow.log_params({
@@ -76,6 +101,7 @@ def query_documents(question: str, k: int = 4) -> dict:
             "embedding_model": EMBEDDING_MODEL
         })
 
+        # ── Retrieval ────────────────────────────────────────────────
         start_time = time.time()
         relevant_chunks = similarity_search(question, k=k)
         retrieval_latency = round(time.time() - start_time, 4)
@@ -84,7 +110,6 @@ def query_documents(question: str, k: int = 4) -> dict:
             "retrieval_latency_seconds": retrieval_latency,
             "chunks_retrieved": len(relevant_chunks),
             "chunks_requested": k,
-            # if db has fewer docs than k, this will be < 1.0
             "retrieval_rate": len(relevant_chunks) / k if k > 0 else 0
         })
 
@@ -96,7 +121,7 @@ def query_documents(question: str, k: int = 4) -> dict:
                 "chunks_used": 0
             }
 
-        # ── Build answer ─────────────────────────────────────────────
+        # ── Build context ────────────────────────────────────────────
         context = "\n\n".join([
             f"[Source: {chunk.metadata.get('source', 'unknown')} | "
             f"Page: {chunk.metadata.get('page', 'N/A')}]\n{chunk.page_content}"
@@ -108,8 +133,19 @@ def query_documents(question: str, k: int = 4) -> dict:
             for chunk in relevant_chunks
         ]))
 
-        # ── Log artifact (save the full query+answer as a text file) ─
-        artifact_content = f"""QUESTION:\n{question}
+        # ── Generation ───────────────────────────────────────────────
+        start_generation = time.time()
+        answer = generate_answer(question, context)
+        generation_latency = round(time.time() - start_generation, 4)
+
+        mlflow.log_metrics({
+            "generation_latency_seconds": generation_latency,
+            "total_latency_seconds": round(retrieval_latency + generation_latency, 4)
+        })
+
+        # ── Log artifact ─────────────────────────────────────────────
+        artifact_content = f"""QUESTION:
+{question}
 
 PARAMETERS:
   k             : {k}
@@ -118,16 +154,20 @@ PARAMETERS:
   embedding     : {EMBEDDING_MODEL}
 
 METRICS:
-  retrieval_latency : {retrieval_latency}s
-  chunks_retrieved  : {len(relevant_chunks)}
+  retrieval_latency  : {retrieval_latency}s
+  generation_latency : {generation_latency}s
+  total_latency      : {round(retrieval_latency + generation_latency, 4)}s
 
 SOURCES:
 {chr(10).join(sources)}
 
 RETRIEVED CONTEXT:
 {context}
+
+GENERATED ANSWER:
+{answer}
 """
-        artifact_path = f"query_result.txt"
+        artifact_path = "query_result.txt"
         with open(artifact_path, "w") as f:
             f.write(artifact_content)
         mlflow.log_artifact(artifact_path)
@@ -136,7 +176,7 @@ RETRIEVED CONTEXT:
         mlflow.set_tag("result", "success")
 
     return {
-        "answer": context,
+        "answer": answer,
         "sources": sources,
         "chunks_used": len(relevant_chunks)
     }
