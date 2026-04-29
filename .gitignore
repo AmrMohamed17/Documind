@@ -8,3 +8,4 @@ data/
 credentials/
 /data
 mlflow.db
+.env.docker

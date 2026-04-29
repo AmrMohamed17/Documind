@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.chroma/
+mlruns/
+mlflow.db
+credentials/
+data/
+*.dvc
+.dvc/
+tests/
+test_*.py
