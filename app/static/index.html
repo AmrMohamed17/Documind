@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuMind — Enterprise RAG Platform</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f8f7;
+      color: #1a1a1a;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    header {
+      background: #1a1a1a;
+      padding: 0.875rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+    .logo-mark {
+      width: 28px; height: 28px;
+      background: #5DCAA5;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-mark svg { width: 15px; height: 15px; }
+
+    .logo-text {
+      font-size: 15px; font-weight: 600; color: #fff; letter-spacing: -0.3px;
+    }
+
+    .logo-sub { font-size: 12px; color: #666; margin-left: 6px; font-weight: 400; }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .status-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #888;
+    }
+
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #5DCAA5;
+    }
+
+    .header-link {
+      font-size: 12px; color: #666; text-decoration: none;
+      padding: 5px 12px; border: 0.5px solid #333; border-radius: 6px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .header-link:hover { border-color: #555; color: #aaa; }
+
+    /* ── Main layout ───────────────────────────────────────────── */
+    .app-body {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ───────────────────────────────────────────────── */
+    .sidebar {
+      background: #fff;
+      border-right: 0.5px solid #e8e8e4;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 1.25rem 1.5rem 1rem;
+      border-bottom: 0.5px solid #f0f0ec;
+    }
+
+    .section-label {
+      font-size: 10px; font-weight: 600; color: #aaa;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .drop-zone {
+      border: 1px dashed #d8d8d4;
+      border-radius: 10px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .drop-zone:hover { background: #fafaf8; border-color: #bbb; }
+    .drop-zone.dragging { background: #f0faf6; border-color: #5DCAA5; }
+
+    .drop-icon {
+      width: 32px; height: 32px;
+      background: #f4f4f0;
+      border-radius: 8px;
+      margin: 0 auto 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .drop-zone p { font-size: 13px; color: #555; line-height: 1.5; }
+    .drop-zone span { font-size: 11px; color: #aaa; }
+
+    #file-input { display: none; }
+
+    .ingest-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+
+    .ingest-btn:hover { opacity: 0.85; }
+    .ingest-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ingest-btn.visible { display: flex; }
+
+    .selected-file {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: #f8f8f6;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #555;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .selected-file.visible { display: flex; }
+    .selected-file-name { font-weight: 500; color: #1a1a1a; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .ingest-status {
+      margin-top: 8px;
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 7px;
+      display: none;
+    }
+
+    .ingest-status.visible { display: block; }
+    .ingest-status.loading { background: #f4f4f0; color: #888; }
+    .ingest-status.success { background: #E1F5EE; color: #0F6E56; }
+    .ingest-status.error { background: #FCEBEB; color: #A32D2D; }
+
+    /* ── Document list ─────────────────────────────────────────── */
+    .docs-section {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.5rem;
+    }
+
+    .docs-empty {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: #bbb;
+      font-size: 13px;
+    }
+
+    .doc-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      background: #f8f8f6;
+      border-radius: 9px;
+      margin-bottom: 6px;
+    }
+
+    .doc-icon {
+      width: 30px; height: 30px;
+      background: #E1F5EE;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .doc-info { flex: 1; min-width: 0; }
+    .doc-name { font-size: 13px; font-weight: 500; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-meta { font-size: 11px; color: #aaa; margin-top: 1px; }
+
+    .doc-check {
+      width: 18px; height: 18px;
+      background: #5DCAA5;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Main area ─────────────────────────────────────────────── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 1.5rem 2rem;
+      gap: 1.25rem;
+    }
+
+    /* ── Query box ─────────────────────────────────────────────── */
+    .query-card {
+      background: #fff;
+      border: 0.5px solid #e8e8e4;
+      border-radius: 12px;
+      padding: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    textarea {
+      width: 100%;
+      border: 0.5px solid #e0e0dc;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: #1a1a1a;
+      background: #fafaf8;
+      resize: none;
+      height: 72px;
+      line-height: 1.6;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus { outline: none; border-color: #5DCAA5; background: #fff; }
+    textarea::placeholder { color: #bbb; }
+
+    .query-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .k-control { display: flex; align-items: center; gap: 8px; }
+    .k-label { font-size: 12px; color: #aaa; }
+
+    .k-select {
+      font-size: 12px;
+      color: #0F6E56;
+      background: #E1F5EE;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 500;
+    }
+
+    .ask-btn {
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+
+    .ask-btn:hover { opacity: 0.85; }
+    .ask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Answer area ───────────────────────────────────────────── */
+    .answer-area {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .answer-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #ccc;
+      gap: 10px;
+    }
+
+    .answer-empty-icon {
+      width: 44px; height: 44px;
+      background: #f4f4f0;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .answer-empty p { font-size: 13px; }
+
+    .thinking-card {
+      background: #fff;
+      border: 0.5px solid #e8e8e4;
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: none;
+    }
+
+    .thinking-card.visible { display: block; }
+
+    .thinking-dots {
+      display: flex; gap: 4px; align-items: center;
+    }
+
+    .thinking-dots span {
+      width: 6px; height: 6px;
+      background: #bbb;
+      border-radius: 50%;
+      animation: pulse 1.2s infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1); }
+    }
+
+    .answer-card {
+      background: #fff;
+      border: 0.5px solid #e8e8e4;
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: none;
+    }
+
+    .answer-card.visible { display: block; }
+
+    .answer-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .answer-meta { display: flex; gap: 6px; }
+
+    .meta-pill {
+      font-size: 11px;
+      color: #888;
+      background: #f4f4f0;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+
+    .answer-text {
+      font-size: 14px;
+      color: #1a1a1a;
+      line-height: 1.8;
+      padding-bottom: 1rem;
+      border-bottom: 0.5px solid #f0f0ec;
+    }
+
+    .sources-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .sources-label { font-size: 12px; color: #aaa; }
+
+    .source-tag {
+      font-size: 12px;
+      color: #0F6E56;
+      background: #E1F5EE;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .error-card {
+      background: #FCEBEB;
+      border: 0.5px solid #F7C1C1;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      font-size: 13px;
+      color: #A32D2D;
+      display: none;
+    }
+
+    .error-card.visible { display: block; }
+
+    /* ── Scrollbar ─────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #e0e0dc; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1.5" y="1.5" width="5" height="6" rx="1" fill="white" opacity="0.9"/>
+        <rect x="8.5" y="1.5" width="5" height="4" rx="1" fill="white" opacity="0.6"/>
+        <rect x="1.5" y="9.5" width="12" height="2" rx="1" fill="white" opacity="0.7"/>
+        <rect x="1.5" y="12.5" width="8" height="1.5" rx="0.75" fill="white" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="logo-text">DocuMind <span class="logo-sub">Enterprise RAG</span></span>
+  </div>
+  <div class="header-right">
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      API online
+    </div>
+    <a href="/docs" class="header-link" target="_blank">API docs</a>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="section-label">Documents</div>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="drop-icon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v8M5 7l3 3 3-3" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 12h12" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p>Drop a file here</p>
+        <span>PDF or TXT supported</span>
+      </div>
+      <input type="file" id="file-input" accept=".pdf,.txt">
+
+      <div class="selected-file" id="selected-file">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <rect x="1" y="0.5" width="8" height="10" rx="1" stroke="#888" stroke-width="1"/>
+          <path d="M3 4h5M3 6h5M3 8h3" stroke="#888" stroke-width="0.8" stroke-linecap="round"/>
+        </svg>
+        <span class="selected-file-name" id="selected-file-name"></span>
+      </div>
+
+      <button class="ingest-btn" id="ingest-btn" onclick="ingestFile()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M6.5 1v7M3.5 5.5L6.5 8l3-2.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M1.5 10.5h10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Ingest document
+      </button>
+
+      <div class="ingest-status" id="ingest-status"></div>
+    </div>
+
+    <div class="docs-section">
+      <div class="section-label">Ingested</div>
+      <div id="docs-list">
+        <div class="docs-empty" id="docs-empty">No documents yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="query-card">
+      <div class="section-label" style="margin-bottom:10px">Ask a question</div>
+      <textarea id="query-input" placeholder="What is a binary search tree?" onkeydown="handleKey(event)"></textarea>
+      <div class="query-footer">
+        <div class="k-control">
+          <span class="k-label">Chunks to retrieve</span>
+          <select class="k-select" id="k-select">
+            <option value="2">2</option>
+            <option value="4" selected>4</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+          </select>
+        </div>
+        <button class="ask-btn" id="ask-btn" onclick="askQuestion()">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M2 6.5h9M8 3.5l3 3-3 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Ask
+        </button>
+      </div>
+    </div>
+
+    <div class="answer-area" id="answer-area">
+      <div class="answer-empty" id="answer-empty">
+        <div class="answer-empty-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="7" stroke="#ccc" stroke-width="1.5"/>
+            <path d="M10 6v4M10 13v.5" stroke="#ccc" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p>Ingest a document and ask a question</p>
+      </div>
+
+      <div class="thinking-card" id="thinking-card">
+        <div class="thinking-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <div class="answer-card" id="answer-card">
+        <div class="answer-card-header">
+          <div class="section-label" style="margin-bottom:0">Answer</div>
+          <div class="answer-meta">
+            <span class="meta-pill" id="chunks-pill"></span>
+            <span class="meta-pill" id="latency-pill"></span>
+          </div>
+        </div>
+        <div class="answer-text" id="answer-text"></div>
+        <div class="sources-row">
+          <span class="sources-label">Sources</span>
+          <div id="source-tags"></div>
+        </div>
+      </div>
+
+      <div class="error-card" id="error-card"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '';
+  const ingestedDocs = [];
+
+  const fileInput = document.getElementById('file-input');
+  const dropZone = document.getElementById('drop-zone');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) showSelectedFile(fileInput.files[0]);
+  });
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('dragging');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragging');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      fileInput.files = e.dataTransfer.files;
+      showSelectedFile(file);
+    }
+  });
+
+  function showSelectedFile(file) {
+    document.getElementById('selected-file-name').textContent = file.name;
+    document.getElementById('selected-file').classList.add('visible');
+    document.getElementById('ingest-btn').classList.add('visible');
+    setIngestStatus('', '');
+  }
+
+  function setIngestStatus(msg, type) {
+    const el = document.getElementById('ingest-status');
+    el.textContent = msg;
+    el.className = 'ingest-status' + (msg ? ' visible ' + type : '');
+  }
+
+  async function ingestFile() {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const btn = document.getElementById('ingest-btn');
+    btn.disabled = true;
+    setIngestStatus('Ingesting...', 'loading');
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(`${API}/api/v1/ingest`, { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ingestion failed');
+
+      setIngestStatus(`${data.chunks_stored} chunks stored from ${data.pages_loaded} page(s)`, 'success');
+      addDocToList(data);
+      document.getElementById('selected-file').classList.remove('visible');
+      document.getElementById('ingest-btn').classList.remove('visible');
+      document.getElementById('answer-empty').style.display = 'none';
+    } catch (e) {
+      setIngestStatus(e.message, 'error');
+    }
+
+    btn.disabled = false;
+  }
+
+  function addDocToList(data) {
+    ingestedDocs.push(data);
+    document.getElementById('docs-empty').style.display = 'none';
+    const list = document.getElementById('docs-list');
+    const item = document.createElement('div');
+    item.className = 'doc-item';
+    item.innerHTML = `
+      <div class="doc-icon">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <rect x="2" y="1" width="8" height="10" rx="1" stroke="#0F6E56" stroke-width="1.2"/>
+          <path d="M4 5h5M4 7h5M4 9h3" stroke="#0F6E56" stroke-width="1" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="doc-info">
+        <div class="doc-name">${data.file}</div>
+        <div class="doc-meta">${data.pages_loaded} pages &middot; ${data.chunks_stored} chunks</div>
+      </div>
+      <div class="doc-check">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2 5l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    `;
+    list.appendChild(item);
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      askQuestion();
+    }
+  }
+
+  async function askQuestion() {
+    const question = document.getElementById('query-input').value.trim();
+    if (!question) return;
+
+    const k = parseInt(document.getElementById('k-select').value);
+    const btn = document.getElementById('ask-btn');
+
+    btn.disabled = true;
+    document.getElementById('answer-empty').style.display = 'none';
+    document.getElementById('answer-card').classList.remove('visible');
+    document.getElementById('error-card').classList.remove('visible');
+    document.getElementById('thinking-card').classList.add('visible');
+
+    const start = Date.now();
+
+    try {
+      const res = await fetch(`${API}/api/v1/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, k })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Query failed');
+
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+
+      document.getElementById('thinking-card').classList.remove('visible');
+      document.getElementById('answer-text').textContent = data.answer;
+      document.getElementById('chunks-pill').textContent = `${data.chunks_used} chunks`;
+      document.getElementById('latency-pill').textContent = `${elapsed}s`;
+      document.getElementById('source-tags').innerHTML = data.sources
+        .map(s => `<span class="source-tag">${s.split('/').pop()}</span>`)
+        .join(' ');
+      document.getElementById('answer-card').classList.add('visible');
+
+    } catch (e) {
+      document.getElementById('thinking-card').classList.remove('visible');
+      const errCard = document.getElementById('error-card');
+      errCard.textContent = e.message;
+      errCard.classList.add('visible');
+    }
+
+    btn.disabled = false;
+  }
+</script>
+</body>
+</html>

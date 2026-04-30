@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.api.routes import router
 from app.core.embeddings import get_embedding_function
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import os
 
 
@@ -22,6 +24,11 @@ app = FastAPI(
 )
 
 app.include_router(router, prefix="/api/v1")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("app/static/index.html")
 
 
 @app.get("/health")
