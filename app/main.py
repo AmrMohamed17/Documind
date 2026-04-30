@@ -23,8 +23,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.include_router(router, prefix="/api/v1")
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/")
 async def serve_frontend():
@@ -33,9 +31,7 @@ async def serve_frontend():
 
 @app.get("/health")
 async def health_check():
-    """
-    Simple health check endpoint.
-    Used by Docker, CI/CD, and load balancers to verify the app is running.
-    Always returns 200 if the server is up.
-    """
     return {"status": "healthy", "service": "documind"}
+
+app.include_router(router, prefix="/api/v1")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
