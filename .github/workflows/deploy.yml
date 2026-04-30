@@ -68,7 +68,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build --no-cache \
+          docker build \
                        -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:latest \
                        -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }} .
 
