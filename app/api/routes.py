@@ -92,3 +92,27 @@ async def query(request: QueryRequest):
         sources=result["sources"],
         chunks_used=result["chunks_used"]
     )
+
+
+@router.get("/documents")
+async def list_documents():
+    """
+    Returns a list of unique documents currently stored in ChromaDB.
+    Called on page load to restore the document list in the UI.
+    """
+    from app.core.embeddings import get_vector_store
+    store = get_vector_store()
+    results = store.get()
+    
+    if not results or not results.get("metadatas"):
+        return {"documents": []}
+
+    # Deduplicate by source filename
+    seen = {}
+    for metadata in results["metadatas"]:
+        source = metadata.get("source", "unknown")
+        filename = source.split("/")[-1]
+        if filename not in seen:
+            seen[filename] = {"file": filename, "source": source}
+
+    return {"documents": list(seen.values())}
