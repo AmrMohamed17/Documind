@@ -23,8 +23,8 @@ def load_document(file_path: str) -> list[Document]:
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".pdf":
         loader = PyPDFLoader(file_path)
-    elif ext == ".txt":
-        loader = TextLoader(file_path)
+    elif ext in (".txt", ".md"):
+        loader = TextLoader(file_path, encoding="utf-8")
     else:
         raise ValueError(f"Unsupported file type: {ext}")
     return loader.load()

@@ -1,22 +1,23 @@
-from app.core.embedder import embed_document, embed_query
+from app.core.embedder import embed_documents, embed_query
 from app.core.db import get_pool
 
 
 def add_documents(chunks: list) -> int:
-    # 1. Embed everything first — these are network calls to Gemini,
-    #    so we do them BEFORE borrowing a database connection.
+    # 1. Embed all chunk texts in batches (network calls to Gemini).
+    texts = [chunk.page_content for chunk in chunks]
+    embeddings = embed_documents(texts)
+
     rows = [
         (
             chunk.page_content,
             chunk.metadata.get("source", "unknown"),
             chunk.metadata.get("page"),
-            embed_document(chunk.page_content),
+            embedding,
         )
-        for chunk in chunks
+        for chunk, embedding in zip(chunks, embeddings)
     ]
 
-    # 2. Borrow a connection just long enough to write the rows.
-    #    Leaving the block commits automatically.
+    # 2. Borrow a connection just long enough to write them.
     with get_pool().connection() as conn:
         for content, source, page, embedding in rows:
             conn.execute(
@@ -27,7 +28,6 @@ def add_documents(chunks: list) -> int:
                 (content, source, page, embedding),
             )
     return len(rows)
-
 
 def similarity_search(query: str, k: int = 4) -> list[dict]:
     # Embed the question first (network call), THEN borrow a connection.
