@@ -15,28 +15,10 @@ import re
 import sys
 from pathlib import Path
 from collections import Counter
+from eval.text_utils import normalize, split_fragments
 
 GOLDEN_PATH = Path(sys.argv[1] if len(sys.argv) > 1 else "eval/golden.jsonl")
 
-
-def normalize(text: str) -> str:
-    """Make text comparable the SAME way the recall metric will:
-    unify quotes/dashes, strip invisible Markdown markup, collapse whitespace, lowercase."""
-    # unify fancy quotes / dashes
-    text = (text.replace("\u201c", '"').replace("\u201d", '"')
-                .replace("\u2019", "'").replace("\u2018", "'")
-                .replace("\u2014", "-").replace("\u2013", "-"))
-    # flatten Markdown links  [text](url) -> text
-    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-    # strip inline-code backticks and emphasis markers (invisible when rendered)
-    text = text.replace("`", "").replace("*", "")
-    # collapse all whitespace to single spaces, lowercase
-    text = re.sub(r"\s+", " ", text)
-    return text.strip().lower()
-
-def split_fragments(snippet: str) -> list[str]:
-    """A snippet may join several spans with '...'. Split into the real spans."""
-    return [p for p in re.split(r"\s*\.\.\.\s*", snippet) if p.strip()]
 
 
 # ── Load dataset ────────────────────────────────────────────────────

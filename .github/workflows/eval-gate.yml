@@ -1,0 +1,62 @@
+name: Eval Gate
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  recall-gate:
+    name: Recall regression gate
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: documind
+          POSTGRES_PASSWORD: devpassword
+          POSTGRES_DB: documind
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U documind"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up database schema
+        run: psql "$DATABASE_URL" -f db/init.sql
+        env:
+          DATABASE_URL: postgresql://documind:devpassword@localhost:5432/documind
+
+      - name: Ingest corpus
+        run: python ingest_corpus.py corpus
+        env:
+          DATABASE_URL: postgresql://documind:devpassword@localhost:5432/documind
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Run recall gate
+        run: python -m eval.check_gate
+        env:
+          DATABASE_URL: postgresql://documind:devpassword@localhost:5432/documind
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        
+      
+      - name: Faithfulness soft-report (non-blocking)
+        if: always()
+        continue-on-error: true
+        run: python -m eval.faithfulness_ci
+        env:
+          DATABASE_URL: postgresql://documind:devpassword@localhost:5432/documind
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
