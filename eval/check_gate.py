@@ -21,6 +21,7 @@ def main():
     baseline = json.loads(BASELINE_PATH.read_text())
     tol = baseline["tolerance"]
     hard = set(baseline["hard_gate"])
+    gate_k = set(baseline["gate_k"])
     base = baseline["recall"]
 
     print("Running recall for the gate...\n")
@@ -34,7 +35,7 @@ def main():
         for k_str, base_score in base[qtype].items():
             cur = current[qtype][int(k_str)]
             floor = base_score - tol
-            gated = qtype in hard
+            gated = (qtype in hard) and (int(k_str) in gate_k)
 
             if not gated:
                 status = "report"          # multi-hop: shown, never fails

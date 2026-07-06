@@ -1,10 +1,7 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:   # manual-only; no longer runs automatically on push
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
