@@ -11,7 +11,7 @@ from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
-from app.core.embeddings import add_documents, similarity_search
+from app.core.embeddings import add_documents, retrieve, similarity_search
 from app.core.gemini import get_client
 
 load_dotenv()
@@ -107,7 +107,7 @@ Answer:"""
 
 
 def query_documents(question: str, k: int = 4) -> dict:
-    results = similarity_search(question, k=k)
+    results = retrieve(question, k=k)
 
     if not results:
         return {"answer": "No relevant documents found.", "sources": [], "chunks_used": 0}

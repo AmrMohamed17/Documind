@@ -56,3 +56,11 @@ def embed_documents(texts: list[str]) -> list[list[float]]:
 def embed_query(text: str) -> list[float]:
     """Embed a single user question (for searching)."""
     return _embed_batch([text], task_type="RETRIEVAL_QUERY")[0]
+
+
+def embed_queries(texts: list[str]) -> list[list[float]]:
+    """Embed many questions in batches (for evaluation)."""
+    out: list[list[float]] = []
+    for i in range(0, len(texts), BATCH_SIZE):
+        out.extend(_embed_batch(texts[i:i + BATCH_SIZE], task_type="RETRIEVAL_QUERY"))
+    return out

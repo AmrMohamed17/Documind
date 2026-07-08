@@ -25,7 +25,7 @@ def main():
     base = baseline["recall"]
 
     print("Running recall for the gate...\n")
-    current = compute_recall()["scores"]
+    current = compute_recall(rerank=True)["scores"]
 
     print(f"{'metric':<16}{'baseline':>9}{'current':>9}{'floor':>8}{'':>4}status")
     print("-" * 52)

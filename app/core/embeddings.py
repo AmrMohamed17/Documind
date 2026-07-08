@@ -1,5 +1,12 @@
 from app.core.embedder import embed_documents, embed_query
 from app.core.db import get_pool
+from app.core.reranker import rerank_with_rrf, RERANK_CANDIDATES
+
+
+def retrieve(query: str, k: int = 4) -> list[dict]:
+    """Production retrieval: dense top-N candidates -> rerank + RRF -> top k."""
+    candidates = search_by_embedding(embed_query(query), k=RERANK_CANDIDATES)
+    return rerank_with_rrf(query, candidates)[:k]
 
 
 def add_documents(chunks: list) -> int:
@@ -29,10 +36,8 @@ def add_documents(chunks: list) -> int:
             )
     return len(rows)
 
-def similarity_search(query: str, k: int = 4) -> list[dict]:
-    # Embed the question first (network call), THEN borrow a connection.
-    query_embedding = embed_query(query)
-
+def search_by_embedding(query_embedding: list[float], k: int = 4) -> list[dict]:
+    """Search using an ALREADY-computed query embedding (no API call)."""
     with get_pool().connection() as conn:
         rows = conn.execute(
             """
@@ -43,11 +48,12 @@ def similarity_search(query: str, k: int = 4) -> list[dict]:
             """,
             (query_embedding, k),
         ).fetchall()
+    return [{"content": r[0], "source": r[1], "page": r[2], "distance": r[3]} for r in rows]
 
-    return [
-        {"content": r[0], "source": r[1], "page": r[2], "distance": r[3]}
-        for r in rows
-    ]
+
+def similarity_search(query: str, k: int = 4) -> list[dict]:
+    """Embed the question, then search (used by the live app)."""
+    return search_by_embedding(embed_query(query), k=k)
 
 
 def list_sources() -> list[str]:
