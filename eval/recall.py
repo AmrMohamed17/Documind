@@ -15,8 +15,11 @@ from collections import defaultdict
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.core.embeddings import similarity_search
+from app.core.embedder import embed_queries
+from app.core.reranker import rerank_with_rrf, RERANK_CANDIDATES
+from app.core.embeddings import search_by_embedding
 from eval.text_utils import normalize, split_fragments
+
 
 GOLDEN_PATH = Path("eval/golden.jsonl")
 K_VALUES = [3, 5, 10]
@@ -36,17 +39,23 @@ def all_fragments_found(fragments: list[str], chunks_norm: list[str]) -> bool:
     )
 
 
-def compute_recall() -> dict:
-    """Run recall and return {type: {k: score}} plus counts. No printing."""
+def compute_recall(rerank: bool = False) -> dict:
     answerable = [e for e in load_golden() if e.get("answerable")]
+    query_embeddings = embed_queries([e["question"] for e in answerable])
+
     hits = defaultdict(lambda: defaultdict(int))
     totals = defaultdict(int)
 
-    for e in answerable:
+    fetch_k = RERANK_CANDIDATES if rerank else MAX_K
+    for e, q_emb in zip(answerable, query_embeddings):
         qtype = e["type"]
         totals[qtype] += 1
         fragments = [normalize(f) for f in split_fragments(e["gold_snippet"])]
-        results = similarity_search(e["question"], k=MAX_K)
+
+        results = search_by_embedding(q_emb, k=fetch_k)   # dense stage
+        if rerank:
+            results = rerank_with_rrf(e["question"], results)   # cross-encoder + RRF
+
         chunks_norm = [normalize(r["content"]) for r in results]
         for k in K_VALUES:
             if all_fragments_found(fragments, chunks_norm[:k]):
@@ -60,17 +69,22 @@ def compute_recall() -> dict:
         scores["overall"][k] = (hits["single"][k] + hits["multi"][k]) / n_all
     return {"scores": scores, "counts": dict(totals)}
 
-
 def main():
-    data = compute_recall()
-    s, counts = data["scores"], data["counts"]
-    print("\n=== Recall@k ===")
-    head = "type        " + "".join(f" @{k:<5}" for k in K_VALUES) + " count"
-    print(head + "\n" + "-" * len(head))
+    print("Measuring dense-only recall (baseline)...")
+    dense = compute_recall(rerank=False)["scores"]
+    print("Measuring reranked recall...")
+    reranked = compute_recall(rerank=True)["scores"]
+
+    print("\n=== Recall@k:  dense -> reranked ===")
+    header = f"{'type':<9}" + "".join(f"{('@'+str(k)):>18}" for k in K_VALUES)
+    print(header + "\n" + "-" * len(header))
     for qtype in ("single", "multi", "overall"):
-        n = counts.get(qtype, counts["single"] + counts["multi"])
-        row = f"{qtype:<11}" + "".join(f" {s[qtype][k]:<5.2f}" for k in K_VALUES)
-        print(row + f" {n}")
+        row = f"{qtype:<9}"
+        for k in K_VALUES:
+            d, r = dense[qtype][k], reranked[qtype][k]
+            arrow = "↑" if r > d else ("↓" if r < d else "=")
+            row += f"{d:.2f} -> {r:.2f} {arrow}".rjust(18)
+        print(row)
         
 
 if __name__ == "__main__":
