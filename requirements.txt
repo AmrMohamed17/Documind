@@ -9,6 +9,7 @@ python-dotenv==1.2.2
 
 # Gemini — embeddings + generation
 google-genai==2.8.0
+openai==2.44.0
 
 # Postgres + pgvector
 psycopg[binary]==3.3.4
