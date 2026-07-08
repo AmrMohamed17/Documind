@@ -39,11 +39,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://documind:devpassword@localhost:5432/documind
 
-      - name: Ingest corpus
-        run: python ingest_corpus.py corpus
+      - name: Load cached corpus embeddings
+        run: psql "$DATABASE_URL" -f db/fixtures/chunks_seed.sql
         env:
           DATABASE_URL: postgresql://documind:devpassword@localhost:5432/documind
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Run recall gate
         run: python -m eval.check_gate

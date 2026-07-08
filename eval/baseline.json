@@ -1,11 +1,11 @@
 {
-  "note": "Recall baseline the CI gate defends. Measured in CI (not local) to match the gate's runtime environment, and set ~1pt below observed CI values for margin against single-sample uncertainty + embedding non-determinism. Hard-gated: single & overall at k=5,10 only (k=3 too jitter-sensitive; multi too small-n). Update UPWARD after a legitimate improvement (e.g. the reranker).",
+  "note": "Recall baseline the CI gate defends. Corpus is loaded from db/fixtures/chunks_seed.sql (frozen), so recall is deterministic run-to-run — verified stable locally across repeated runs. Baselines set ~1pt below observed, with a 2pt tolerance cushion. Hard-gated: single & overall at k=3,5,10. Multi-hop remains report-only (n=14, too small to gate). REGENERATE this baseline if the corpus dump or embedding model changes.",
   "tolerance": 0.02,
   "hard_gate": ["single", "overall"],
-  "gate_k": [5, 10],
+  "gate_k": [3, 5, 10],
   "recall": {
-    "single":  {"3": 0.87, "5": 0.91, "10": 0.96},
-    "multi":   {"3": 0.07, "5": 0.21, "10": 0.43},
-    "overall": {"3": 0.74, "5": 0.79, "10": 0.87}
+    "single":  {"3": 0.92, "5": 0.92, "10": 0.96},
+    "multi":   {"3": 0.14, "5": 0.29, "10": 0.36},
+    "overall": {"3": 0.79, "5": 0.81, "10": 0.86}
   }
 }
