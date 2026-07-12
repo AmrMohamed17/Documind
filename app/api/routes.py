@@ -11,6 +11,7 @@ router = APIRouter()
 
 UPLOAD_DIR = "data/raw"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 
 
 class QueryRequest(BaseModel):
@@ -34,6 +35,13 @@ class QueryResponse(BaseModel):
 
 @router.post("/ingest", response_model=IngestResponse)
 def ingest(file: UploadFile = File(...)):
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Uploads are disabled in the public demo. This demo answers questions "
+                   "over the FastAPI documentation corpus."
+        )
+    
     allowed = {".pdf", ".txt"}
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in allowed:

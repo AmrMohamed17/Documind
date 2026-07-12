@@ -444,43 +444,29 @@
   <!-- ── Sidebar ── -->
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="section-label">Documents</div>
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <div class="drop-icon">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 2v8M5 7l3 3 3-3" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M2 12h12" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <p>Drop a file here</p>
-        <span>PDF or TXT supported</span>
-      </div>
-      <input type="file" id="file-input" accept=".pdf,.txt">
-
-      <div class="selected-file" id="selected-file">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <rect x="1" y="0.5" width="8" height="10" rx="1" stroke="#888" stroke-width="1"/>
-          <path d="M3 4h5M3 6h5M3 8h3" stroke="#888" stroke-width="0.8" stroke-linecap="round"/>
-        </svg>
-        <span class="selected-file-name" id="selected-file-name"></span>
-      </div>
-
-      <button class="ingest-btn" id="ingest-btn" onclick="ingestFile()">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M6.5 1v7M3.5 5.5L6.5 8l3-2.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M1.5 10.5h10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        Ingest document
+      <div class="section-label">Try these</div>
+      <button class="ingest-btn visible" style="margin-bottom:8px"
+        onclick="ask('How do you declare a required query parameter?')">
+        Required query parameter?
       </button>
-
-      <div class="ingest-status" id="ingest-status"></div>
+      <button class="ingest-btn visible" style="margin-bottom:8px"
+        onclick="ask('What does response_model do?')">
+        What does response_model do?
+      </button>
+      <button class="ingest-btn visible" style="margin-bottom:8px"
+        onclick="ask('How do I connect FastAPI to MongoDB?')">
+        MongoDB? (not in the docs)
+      </button>
+      <p style="font-size:12px;color:#888;line-height:1.5;margin-top:12px">
+        This demo answers over the <b>FastAPI documentation</b> (667 chunks).
+        Every answer cites its source — and if the answer isn't in the docs,
+        it says so instead of making one up.
+      </p>
     </div>
 
     <div class="docs-section">
-      <div class="section-label">Ingested</div>
-      <div id="docs-list">
-        <div class="docs-empty" id="docs-empty">No documents yet</div>
-      </div>
+      <div class="section-label">Corpus</div>
+      <div id="docs-list"></div>
     </div>
   </div>
 
@@ -516,7 +502,7 @@
             <path d="M10 6v4M10 13v.5" stroke="#ccc" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </div>
-        <p>Ingest a document and ask a question</p>
+        <p>Ask a question about the FastAPI documentation</p>
       </div>
 
       <div class="thinking-card" id="thinking-card">
@@ -547,96 +533,10 @@
 
 <script>
   const API = '';
-  const ingestedDocs = [];
 
-  const fileInput = document.getElementById('file-input');
-  const dropZone = document.getElementById('drop-zone');
-
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) showSelectedFile(fileInput.files[0]);
-  });
-
-  dropZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    dropZone.classList.add('dragging');
-  });
-
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
-
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragging');
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      fileInput.files = e.dataTransfer.files;
-      showSelectedFile(file);
-    }
-  });
-
-  function showSelectedFile(file) {
-    document.getElementById('selected-file-name').textContent = file.name;
-    document.getElementById('selected-file').classList.add('visible');
-    document.getElementById('ingest-btn').classList.add('visible');
-    setIngestStatus('', '');
-  }
-
-  function setIngestStatus(msg, type) {
-    const el = document.getElementById('ingest-status');
-    el.textContent = msg;
-    el.className = 'ingest-status' + (msg ? ' visible ' + type : '');
-  }
-
-  async function ingestFile() {
-    const file = fileInput.files[0];
-    if (!file) return;
-
-    const btn = document.getElementById('ingest-btn');
-    btn.disabled = true;
-    setIngestStatus('Ingesting...', 'loading');
-
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      const res = await fetch(`${API}/api/v1/ingest`, { method: 'POST', body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Ingestion failed');
-
-      setIngestStatus(`${data.chunks_stored} chunks stored from ${data.pages_loaded} page(s)`, 'success');
-      addDocToList(data);
-      document.getElementById('selected-file').classList.remove('visible');
-      document.getElementById('ingest-btn').classList.remove('visible');
-      document.getElementById('answer-empty').style.display = 'none';
-    } catch (e) {
-      setIngestStatus(e.message, 'error');
-    }
-
-    btn.disabled = false;
-  }
-
-  function addDocToList(data) {
-    ingestedDocs.push(data);
-    document.getElementById('docs-empty').style.display = 'none';
-    const list = document.getElementById('docs-list');
-    const item = document.createElement('div');
-    item.className = 'doc-item';
-    item.innerHTML = `
-      <div class="doc-icon">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <rect x="2" y="1" width="8" height="10" rx="1" stroke="#0F6E56" stroke-width="1.2"/>
-          <path d="M4 5h5M4 7h5M4 9h3" stroke="#0F6E56" stroke-width="1" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <div class="doc-info">
-        <div class="doc-name">${data.file}</div>
-        <div class="doc-meta">${data.pages_loaded} pages &middot; ${data.chunks_stored} chunks</div>
-      </div>
-      <div class="doc-check">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M2 5l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-    `;
-    list.appendChild(item);
+  function ask(q) {
+    document.getElementById('query-input').value = q;
+    askQuestion();
   }
 
   function handleKey(e) {
@@ -646,44 +546,38 @@
     }
   }
 
-  async function loadExistingDocs() {
+  // Show which documents make up the corpus.
+  async function loadCorpus() {
     try {
       const res = await fetch(`${API}/api/v1/documents`);
       const data = await res.json();
-      if (data.documents && data.documents.length > 0) {
-        document.getElementById('answer-empty').style.display = 'none';
-        document.getElementById('docs-empty').style.display = 'none';
-        data.documents.forEach(doc => {
-          const list = document.getElementById('docs-list');
-          const item = document.createElement('div');
-          item.className = 'doc-item';
-          item.innerHTML = `
-            <div class="doc-icon">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="2" y="1" width="8" height="10" rx="1" stroke="#0F6E56" stroke-width="1.2"/>
-                <path d="M4 5h5M4 7h5M4 9h3" stroke="#0F6E56" stroke-width="1" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <div class="doc-info">
-              <div class="doc-name">${doc.file}</div>
-              <div class="doc-meta">ready to query</div>
-            </div>
-            <div class="doc-check">
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M2 5l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </div>
-          `;
-          list.appendChild(item);
-        });
-      }
+      const list = document.getElementById('docs-list');
+      if (!data.documents || !data.documents.length) return;
+
+      list.innerHTML = `
+        <div class="doc-item">
+          <div class="doc-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="2" y="1" width="8" height="10" rx="1" stroke="#0F6E56" stroke-width="1.2"/>
+              <path d="M4 5h5M4 7h5M4 9h3" stroke="#0F6E56" stroke-width="1" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name">FastAPI documentation</div>
+            <div class="doc-meta">${data.documents.length} files &middot; 667 chunks</div>
+          </div>
+          <div class="doc-check">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M2 5l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>`;
     } catch (e) {
-      console.error('Failed to load existing docs:', e);
+      console.error('Failed to load corpus:', e);
     }
   }
 
-// Call on page load
-  window.addEventListener('DOMContentLoaded', loadExistingDocs);
+  window.addEventListener('DOMContentLoaded', loadCorpus);
 
   async function askQuestion() {
     const question = document.getElementById('query-input').value.trim();
