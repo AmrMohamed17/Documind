@@ -444,36 +444,24 @@
   <!-- ── Sidebar ── -->
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="section-label">Documents</div>
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <div class="drop-icon">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 2v8M5 7l3 3 3-3" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M2 12h12" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <p>Drop a file here</p>
-        <span>PDF or TXT supported</span>
-      </div>
-      <input type="file" id="file-input" accept=".pdf,.txt">
-
-      <div class="selected-file" id="selected-file">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <rect x="1" y="0.5" width="8" height="10" rx="1" stroke="#888" stroke-width="1"/>
-          <path d="M3 4h5M3 6h5M3 8h3" stroke="#888" stroke-width="0.8" stroke-linecap="round"/>
-        </svg>
-        <span class="selected-file-name" id="selected-file-name"></span>
-      </div>
-
-      <button class="ingest-btn" id="ingest-btn" onclick="ingestFile()">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M6.5 1v7M3.5 5.5L6.5 8l3-2.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M1.5 10.5h10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        Ingest document
+      <div class="section-label">Try these</div>
+      <button class="ingest-btn visible" style="margin-bottom:8px"
+        onclick="ask('How do you declare a required query parameter?')">
+        Required query parameter?
       </button>
-
-      <div class="ingest-status" id="ingest-status"></div>
+      <button class="ingest-btn visible" style="margin-bottom:8px"
+        onclick="ask('What does response_model do?')">
+        What does response_model do?
+      </button>
+      <button class="ingest-btn visible" style="margin-bottom:8px"
+        onclick="ask('How do I connect FastAPI to MongoDB?')">
+        MongoDB? (not in the docs)
+      </button>
+      <p style="font-size:12px;color:#888;line-height:1.5;margin-top:12px">
+        This demo answers over the <b>FastAPI documentation</b> (667 chunks).
+        Every answer cites its source — and if the answer isn't in the docs,
+        it says so instead of making one up.
+      </p>
     </div>
 
     <div class="docs-section">
@@ -578,6 +566,11 @@
     document.getElementById('selected-file').classList.add('visible');
     document.getElementById('ingest-btn').classList.add('visible');
     setIngestStatus('', '');
+  }
+
+  function ask(q) {
+  document.getElementById('query-input').value = q;
+  askQuestion();
   }
 
   function setIngestStatus(msg, type) {
