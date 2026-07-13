@@ -25,3 +25,7 @@ pypdf==6.10.2
 
 # Reranking
 FlashRank==0.2.10
+
+
+# testing
+pytest==9.0.3
