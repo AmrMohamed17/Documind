@@ -1,0 +1,7 @@
+{
+    email amrm88289@gmail.com
+}
+
+documind.amr-mohammed.com {
+    reverse_proxy app:8000
+}
