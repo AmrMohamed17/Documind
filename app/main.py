@@ -1,7 +1,7 @@
 # app/main.py
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
@@ -29,6 +29,10 @@ app = FastAPI(
 @app.get("/")
 def serve_frontend():
     return FileResponse("app/static/index.html")
+
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)   # "no content" — stops the 404
 
 
 @app.get("/health")
