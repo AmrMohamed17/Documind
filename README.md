@@ -28,6 +28,22 @@ Multi-hop recall@10 improved **58%** after adding the reranker, while single-hop
 
 No LLM is involved in the recall metric — it's pure text-matching arithmetic, exact and reproducible. Faithfulness uses a single-call LLM-as-judge (spot-checked, not formally calibrated, so it's used directionally).
 
+**Latency** *(retrieval pipeline, n=20, local)*
+
+| stage | p50 | p95 |
+|---|---|---|
+| Embed query (Gemini API) | 457 ms | 826 ms |
+| Dense search (pgvector) | **11 ms** | 50 ms |
+| Rerank + RRF (FlashRank, local) | 343 ms | 566 ms |
+| **Retrieval total** | **809 ms** | 1441 ms |
+
+Vector search itself is essentially free — 11 ms over 667 chunks, no index needed at this
+scale. The dominant cost is the embedding API round-trip, not compute. Reranking adds
+~340 ms, which is the price of the multi-hop gain (0.36 → 0.57 recall@10).
+
+End-to-end latency is retrieval + generation; generation (Gemini) dominates and is not
+included here.
+
 ---
 
 ## What it does
