@@ -1,0 +1,38 @@
+"""API contract tests. The RAG pipeline is mocked — we're testing the HTTP
+layer (status codes, response shape, the demo-mode guard), not retrieval."""
+from unittest.mock import patch
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_health():
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json()["status"] == "healthy"
+
+
+def test_query_returns_expected_shape():
+    fake = {"answer": "Use Query().", "sources": ["query-params.md"], "chunks_used": 3}
+    with patch("app.api.routes.query_documents", return_value=fake):
+        r = client.post("/api/v1/query", json={"question": "How do I validate?", "k": 4})
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"question", "answer", "sources", "chunks_used"}
+    assert body["sources"] == ["query-params.md"]
+
+
+def test_empty_question_rejected():
+    r = client.post("/api/v1/query", json={"question": "   ", "k": 4})
+    assert r.status_code == 400
+
+
+def test_ingest_blocked_in_demo_mode():
+    """The public demo must refuse uploads."""
+    with patch("app.api.routes.DEMO_MODE", True):
+        r = client.post(
+            "/api/v1/ingest",
+            files={"file": ("doc.md", b"# hello", "text/markdown")},
+        )
+    assert r.status_code == 403
