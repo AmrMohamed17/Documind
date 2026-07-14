@@ -414,6 +414,54 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #e0e0dc; border-radius: 2px; }
+
+    /* ── Mobile ────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      body {
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;              /* let the page scroll */
+      }
+
+      header {
+        padding: 0.75rem 1rem;
+      }
+
+      .logo-sub { display: none; }   /* save horizontal space */
+      .status-badge { display: none; }
+
+      .app-body {
+        display: flex;               /* stop the 2-column grid */
+        flex-direction: column;      /* stack sidebar above main */
+        overflow: visible;
+      }
+
+      .sidebar {
+        border-right: none;
+        border-bottom: 0.5px solid #e8e8e4;
+        overflow: visible;
+      }
+
+      .sidebar-header { padding: 1rem 1.25rem; }
+      .docs-section { padding: 0.75rem 1.25rem; }
+
+      .main {
+        padding: 1rem 1.25rem;
+        overflow: visible;
+      }
+
+      .answer-area { overflow: visible; }
+
+      textarea { height: 88px; font-size: 16px; }  /* 16px stops iOS zoom-on-focus */
+
+      .query-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .ask-btn { justify-content: center; }
+    }
   </style>
 </head>
 <body>
@@ -428,7 +476,7 @@
         <rect x="1.5" y="12.5" width="8" height="1.5" rx="0.75" fill="white" opacity="0.4"/>
       </svg>
     </div>
-    <span class="logo-text">DocuMind <span class="logo-sub">Enterprise RAG</span></span>
+    <span class="logo-text">DocuMind <span class="logo-sub">evaluation-first RAG</span></span>
   </div>
   <div class="header-right">
     <div class="status-badge">
