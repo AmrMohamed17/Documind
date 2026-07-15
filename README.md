@@ -17,7 +17,7 @@ Retrieval is evaluated against a hand-built, programmatically-validated 100-ques
 | single-hop (71) | 0.93 → 0.90 | 0.93 → 0.92 | **0.97 → 0.97** |
 | multi-hop (14) | 0.14 → 0.21 | 0.29 → 0.36 | **0.36 → 0.57** |
 
-Multi-hop recall@10 improved **58%** after adding the reranker, while single-hop held flat at 0.97.
+Multi-hop recall@10 improved **58%** after adding the reranker, while single-hop held flat at 0.97. A third retrieval stage — hybrid BM25 + dense search — was also implemented and measured, and **didn't ship**: it moved recall by ≤0.01 ([why](#what-was-tested-and-not-shipped)).
 
 **Generation**
 
@@ -37,12 +37,9 @@ No LLM is involved in the recall metric — it's pure text-matching arithmetic, 
 | Rerank + RRF (FlashRank, local) | 343 ms | 566 ms |
 | **Retrieval total** | **809 ms** | 1441 ms |
 
-Vector search itself is essentially free — 11 ms over 667 chunks, no index needed at this
-scale. The dominant cost is the embedding API round-trip, not compute. Reranking adds
-~340 ms, which is the price of the multi-hop gain (0.36 → 0.57 recall@10).
+Vector search itself is essentially free — 11 ms over 667 chunks, no index needed at this scale. The dominant cost is the embedding API round-trip, not compute. Reranking adds ~340 ms, which is the price of the multi-hop gain (0.36 → 0.57 recall@10).
 
-End-to-end latency is retrieval + generation; generation (Gemini) dominates and is not
-included here.
+End-to-end latency is retrieval + generation; generation (Gemini) dominates and is not included here.
 
 ---
 
@@ -158,6 +155,42 @@ python -m eval.inspect_question q071   # trace why one question failed
 
 ---
 
+## What was tested and not shipped
+
+**Hybrid search (BM25 + dense).** Technical docs are full of exact identifiers (`response_model`, `Depends`, `@app.get`), so the hypothesis was that adding BM25 keyword search — fused with dense retrieval via RRF — would lift retrieval. I implemented it and measured it: **recall moved by ≤0.01 at every k.** No meaningful change.
+
+The reason is diagnostic: per-question failure analysis showed the correct passages were already *in* the candidate set but ranked too low — a **ranking** problem, which the reranker had already addressed — not *missing* from the candidate set, the **coverage** problem BM25 solves. Dense retrieval over this corpus wasn't failing on exact-match terms; the embedding model handles identifier-heavy text better than the folk wisdom suggests.
+
+So the complexity didn't earn its place, and the branch didn't merge. The eval harness is what made this an evidence-based call instead of a guess — and it cuts the other way too: without the measurement, "add hybrid search" would have shipped as a résumé bullet while adding a tokenizer, an index, and a fusion step of pure maintenance burden for nothing.
+
+---
+
+## Decisions
+
+**Postgres + pgvector over a dedicated vector DB.** One system, durable persistence, SQL-native filtering. A purpose-built vector database earns its keep at very large scale or query volume — not at 667 chunks.
+
+**Hand-rolled metrics over RAGAS.** Recall is exact arithmetic; a framework would add a dependency and hide the logic. RAGAS's multi-call faithfulness judging was impractical under free-tier rate limits, so the judge is a single call I wrote and can explain. RAGAS is the right tool with paid infrastructure or a fuller metric suite.
+
+**Strict multi-hop scoring.** A multi-hop question counts as a hit only if *every* required passage is retrieved — partial credit would reward retrieval that couldn't actually produce a correct answer.
+
+**Frozen corpus embeddings.** CI loads a committed SQL fixture instead of re-embedding. Cheaper, faster, and it makes recall deterministic run-to-run — which removed the embedding jitter that had caused a false-alarm gate failure at the tightest cutoff.
+
+**Rank fusion, not rank replacement.** Naive reranking helped multi-hop but *hurt* single-hop, because it overwrote a first stage that was already getting it right. RRF keeps both signals.
+
+**Negative results stay in the repo.** Hybrid search was implemented, measured, and rejected (above). Keeping the result documented — rather than deleting the experiment or shipping it anyway — is the eval-first discipline applied honestly.
+
+---
+
+## Known limitations
+
+- **Multi-hop retrieval is still the weak point** (0.57 @ k=10). The reranker lifted it substantially; hybrid search was tested and ruled out (the failures are ranking- and decomposition-shaped, not coverage-shaped). The natural next step is query decomposition — splitting multi-hop questions into sub-queries and retrieving per sub-query.
+- **The faithfulness judge is not formally calibrated** against human labels — it's spot-checked and used directionally, not as precise ground truth.
+- **The hallucination guard is measured on 15 questions.** It held on all of them; that's not the same as "never hallucinates."
+- **Two of 85 answerable questions were over-refused** by the eval pipeline despite sufficient retrieved context — a model-dependent effect, documented rather than patched (tuning the prompt against two eval cases would risk overfitting).
+- **Uploads are disabled in the public demo** (`DEMO_MODE=true`) — a public, unauthenticated ingest endpoint would burn API quota and mix strangers' documents into one shared corpus. Session-scoped uploads are the next enhancement.
+
+---
+
 ## Run it locally
 
 **Requirements:** Docker, a [Gemini API key](https://aistudio.google.com/app/apikey) (free tier is fine).
@@ -206,30 +239,6 @@ curl -X POST http://localhost:8000/api/v1/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What does response_model do?", "k": 4}'
 ```
-
----
-
-## Decisions
-
-**Postgres + pgvector over a dedicated vector DB.** One system, durable persistence, SQL-native filtering. A purpose-built vector database earns its keep at very large scale or query volume — not at 667 chunks.
-
-**Hand-rolled metrics over RAGAS.** Recall is exact arithmetic; a framework would add a dependency and hide the logic. RAGAS's multi-call faithfulness judging was impractical under free-tier rate limits, so the judge is a single call I wrote and can explain. RAGAS is the right tool with paid infrastructure or a fuller metric suite.
-
-**Strict multi-hop scoring.** A multi-hop question counts as a hit only if *every* required passage is retrieved — partial credit would reward retrieval that couldn't actually produce a correct answer.
-
-**Frozen corpus embeddings.** CI loads a committed SQL fixture instead of re-embedding. Cheaper, faster, and it makes recall deterministic run-to-run — which removed the embedding jitter that had caused a false-alarm gate failure at the tightest cutoff.
-
-**Rank fusion, not rank replacement.** Naive reranking helped multi-hop but *hurt* single-hop, because it overwrote a first stage that was already getting it right. RRF keeps both signals.
-
----
-
-## Known limitations
-
-- **Multi-hop retrieval is still the weak point** (0.57 @ k=10). The reranker lifted it substantially, but hybrid search (BM25 + dense) is the natural next step.
-- **The faithfulness judge is not formally calibrated** against human labels — it's spot-checked and used directionally, not as precise ground truth.
-- **The hallucination guard is measured on 15 questions.** It held on all of them; that's not the same as "never hallucinates."
-- **Two of 85 answerable questions were over-refused** by the eval pipeline despite sufficient retrieved context — a model-dependent effect, documented rather than patched (tuning the prompt against two eval cases would risk overfitting).
-- **Uploads are disabled in the public demo** (`DEMO_MODE=true`) — a public, unauthenticated ingest endpoint would burn API quota and mix strangers' documents into one shared corpus. Session-scoped uploads are the next enhancement.
 
 ---
 
